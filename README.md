@@ -1,16 +1,16 @@
 # MicroManus
 
 A deep-research AI agent web app: sign in with Google/GitHub, unlock with a coupon or a
-$5 test-mode card payment, bring your own LLM key (Claude / OpenAI / Kimi), and chat with an
+$5 card payment, bring your own LLM key (Claude / OpenAI / Kimi / Gemini), and chat with an
 agent that runs a real **think → search → read → conclude** loop over the live web, keeps
 per-thread context, and produces downloadable PDF reports. A stats page shows token usage
 (input / output / cache) and USD cost per chat and per run on your own key.
 
 - **Framework:** Next.js 14 (App Router, TypeScript) → deploy on Vercel
 - **Auth + DB + Storage:** Supabase (Postgres, OAuth, Storage)
-- **Payments:** DodoPayments (test mode)
+- **Payments:** DodoPayments (live mode)
 - **Web search:** Brave Search API · **Page reading:** server-side fetch + Cheerio extraction
-- **LLM SDKs:** `@anthropic-ai/sdk` (Anthropic), `openai` (OpenAI + Kimi/Moonshot + custom)
+- **LLM SDKs:** `@anthropic-ai/sdk` (Anthropic), `openai` (OpenAI + Kimi/Moonshot + Gemini + custom)
 - **PDF:** `@react-pdf/renderer` (pure JS, serverless-safe)
 
 > **Design decision (from the brief):** "Credits" and "cost/stats" are **two different things**.
@@ -24,7 +24,7 @@ per-thread context, and produces downloadable PDF reports. A stats page shows to
 ## 1. Prerequisites
 
 - Node 18.18+ (Node 20/22 recommended), npm
-- Accounts: **Supabase**, **DodoPayments** (test mode), **Brave Search**, **Google Cloud** +
+- Accounts: **Supabase**, **DodoPayments** (live mode), **Tavily** (free web search), **Google Cloud** +
   **GitHub** (OAuth apps), **Vercel**
 
 ```bash
@@ -79,27 +79,36 @@ openssl rand -base64 32       # paste into ENCRYPTION_KEY
 
 ---
 
-## 3. DodoPayments setup (test mode)
+## 3. DodoPayments setup (live mode)
 
-1. Create an account and switch to **Test mode**.
+1. Create an account and complete **business verification**, then use **Live mode**.
 2. Create a **one-time-payment product** priced at **$5 USD**. Copy its `product_id` →
    `DODO_PRODUCT_ID_5_CREDITS`.
-3. Settings → API → copy the API key → `DODO_PAYMENTS_API_KEY`. Keep `DODO_PAYMENTS_ENVIRONMENT=test_mode`.
+3. Settings → API → copy the **live** API key → `DODO_PAYMENTS_API_KEY`. Set
+   `DODO_PAYMENTS_ENVIRONMENT=live_mode`.
 4. Settings → Webhooks → **Add endpoint**: `https://<app>.vercel.app/api/webhooks/dodo`
    (for local testing use a tunnel, e.g. `ngrok`, pointing at `/api/webhooks/dodo`). Subscribe to
    **`payment.succeeded`**. Copy the signing secret → `DODO_PAYMENTS_WEBHOOK_SECRET`.
 
-**Test card:** `4242 4242 4242 4242`, any future expiry, any CVC, any ZIP.
+In **live mode** customers pay with a real card on DodoPayments' hosted checkout — real charges
+apply, so verify the flow with a low-value real payment (or a card you control).
 
 > The webhook is the **source of truth** for granting credits (the browser return URL only drives
 > the UI). Crediting is idempotent per `dodo_payment_id`.
 
 ---
 
-## 4. Brave Search
+## 4. Web search (free)
 
-Get a free key at [api.search.brave.com](https://api.search.brave.com) → `BRAVE_SEARCH_API_KEY`.
-(Check current free-tier query limits on their pricing page.)
+Search is pluggable — the app picks a provider by which key is present:
+**Tavily → Brave → DuckDuckGo**. Pick one:
+
+- **Tavily (recommended, free):** sign up at [app.tavily.com](https://app.tavily.com) — the free
+  plan gives 1,000 searches/month with **no credit card**. Copy the key → `TAVILY_API_KEY`.
+- **Brave (optional):** [api.search.brave.com](https://api.search.brave.com) → `BRAVE_SEARCH_API_KEY`.
+- **Nothing (zero-config):** leave both blank and the app uses a **no-key DuckDuckGo** fallback
+  automatically — free and requires no signup, but best-effort (it can occasionally rate-limit, so
+  Tavily is recommended for a smooth demo).
 
 ---
 
@@ -113,9 +122,9 @@ Fill `.env.local` (local) and the Vercel project's Environment Variables (prod) 
 | `NEXT_PUBLIC_SITE_URL` | `http://localhost:3000` locally; `https://<app>.vercel.app` in prod |
 | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` | Supabase → API |
 | `DODO_PAYMENTS_API_KEY` / `DODO_PAYMENTS_WEBHOOK_SECRET` / `DODO_PRODUCT_ID_5_CREDITS` | DodoPayments |
-| `DODO_PAYMENTS_ENVIRONMENT` | `test_mode` |
-| `BRAVE_SEARCH_API_KEY` | Brave |
-| `ENCRYPTION_KEY` | `openssl rand -base64 32` |
+| `DODO_PAYMENTS_ENVIRONMENT` | `live_mode` |
+| `TAVILY_API_KEY` *(or `BRAVE_SEARCH_API_KEY`, or neither)* | Tavily / Brave — see §4 |
+| `ENCRYPTION_KEY` | `openssl rand -base64 32` (same value locally **and** in Vercel) |
 | `PAYWALL_COUPON_CODE` | `SID_DRDROID` |
 
 Never commit `.env.local`.
@@ -130,7 +139,7 @@ npm run typecheck    # tsc --noEmit
 npm run build        # production build
 ```
 
-Sign in → you land on `/paywall`. Redeem coupon **`SID_DRDROID`** (or pay with the test card) to
+Sign in → you land on `/paywall`. Redeem coupon **`SID_DRDROID`** (or pay $5 with a card) to
 get 5 credits → add an LLM key in **Settings → API keys** → start a chat.
 
 ---
@@ -155,7 +164,7 @@ get 5 credits → add an LLM key in **Settings → API keys** → start a chat.
 - [ ] Sign up works via **Google only** and via **GitHub only** (no email/password path).
 - [ ] Paywall shows immediately after first signup, before any app screen is reachable.
 - [ ] Coupon **`SID_DRDROID`** grants exactly **5 credits** (one-time per account).
-- [ ] A **$5 DodoPayments test-mode** payment also grants exactly 5 credits end-to-end.
+- [ ] A **$5 DodoPayments** payment grants exactly 5 credits end-to-end.
 - [ ] Chat: threads, new-chat creation, context retained within a thread across turns.
 - [ ] Agent visibly runs a **think → tool → observe → think** loop (watch the step trace on a
       multi-step prompt like the wildfire example).
