@@ -65,6 +65,13 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentResult> {
   let finalText = "";
   let hitStepLimit = true;
 
+  // Some models (notably lighter ones like Gemini Flash-Lite) occasionally
+  // return an EMPTY completion after a tool result instead of writing the
+  // answer. Rather than surrender with "(no answer produced)", nudge the model
+  // to compose the answer, up to a small budget.
+  const MAX_EMPTY_RETRIES = 2;
+  let emptyRetries = 0;
+
   // Computed once so it's stable across this run's iterations (keeps the
   // Anthropic system-prompt cache valid within the run).
   const system = buildSystemPrompt();
@@ -77,13 +84,32 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentResult> {
       system,
       messages: working,
       tools: TOOL_DEFINITIONS,
-      maxTokens: 4096,
+      maxTokens: 8000,
     });
     usage = addUsage(usage, output.usage);
 
-    // No tool calls → this is the final answer.
+    // No tool calls → the model intends to finish this turn.
     if (!output.toolCalls || output.toolCalls.length === 0) {
-      finalText = output.text?.trim() || "(no answer produced)";
+      const text = (output.text ?? "").trim();
+      if (text !== "") {
+        finalText = text;
+        emit({ type: "assistant_final", text: finalText });
+        hitStepLimit = false;
+        break;
+      }
+      // Empty answer. Nudge the model to actually write it, then retry.
+      if (emptyRetries < MAX_EMPTY_RETRIES) {
+        emptyRetries++;
+        working.push({
+          role: "user",
+          content:
+            "Please write your complete final answer now, based on the information gathered above. Respond with the answer text itself (well-structured Markdown, and cite the sources you used). Do not call any more tools unless truly necessary.",
+        });
+        continue;
+      }
+      // Still empty after retries — surface a useful message instead of blank.
+      finalText =
+        "I gathered research but the selected model returned an empty response when composing the final answer. This can happen with lighter models — please try again, ideally with a more capable model (e.g. Gemini 2.5 Flash or Gemini Pro, or a Claude model).";
       emit({ type: "assistant_final", text: finalText });
       hitStepLimit = false;
       break;
