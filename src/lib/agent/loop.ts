@@ -6,7 +6,7 @@ import type {
 } from "@/lib/providers/types";
 import type { AgentStep } from "@/lib/types";
 import { TOOL_DEFINITIONS, executeTool, type AgentToolContext } from "./tools";
-import { SYSTEM_PROMPT } from "./systemPrompt";
+import { buildSystemPrompt } from "./systemPrompt";
 
 export interface RunAgentInput {
   adapter: ProviderAdapter;
@@ -65,12 +65,16 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentResult> {
   let finalText = "";
   let hitStepLimit = true;
 
+  // Computed once so it's stable across this run's iterations (keeps the
+  // Anthropic system-prompt cache valid within the run).
+  const system = buildSystemPrompt();
+
   for (let i = 0; i < MAX_AGENT_ITERATIONS; i++) {
     const output = await input.adapter.callModel({
       apiKey: input.apiKey,
       baseUrl: input.baseUrl,
       model: input.model,
-      system: SYSTEM_PROMPT,
+      system,
       messages: working,
       tools: TOOL_DEFINITIONS,
       maxTokens: 4096,

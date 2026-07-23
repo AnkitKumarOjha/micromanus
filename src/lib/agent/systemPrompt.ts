@@ -19,3 +19,22 @@ Operating rules:
 - Your final answer should be clear, well-structured Markdown with inline citations to the sources you retrieved. Lead with the outcome, then supporting detail.
 
 You have a limited step budget, so use tools deliberately and get to a well-sourced answer efficiently.`;
+
+// The model has no inherent knowledge of the current date, so we inject it.
+// Without this, questions like "weather today" get anchored to the wrong day.
+export function buildSystemPrompt(now: Date = new Date()): string {
+  const dateStr = now.toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+  const iso = now.toISOString();
+  return `${SYSTEM_PROMPT}
+
+CURRENT DATE: Today is ${dateStr} (UTC). Full timestamp: ${iso}.
+- Interpret "today", "now", "current", "latest", and "recent" relative to this current date.
+- Always state the specific date your information refers to, and make sure it matches what the user asked for. If the user asks for "today" but a source only has data for a different day, say so explicitly instead of mislabeling it — do not present another day's data as today's.
+- Prefer sources and search queries that match the requested date.`;
+}
