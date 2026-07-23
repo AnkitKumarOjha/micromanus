@@ -82,7 +82,7 @@ export function PaywallClient({
         <p className="mt-2 text-muted-foreground">
           {topUp
             ? `Balance: ${credits} credits. Each agent run costs 1 credit. Top up to keep researching.`
-            : "Redeem a coupon or pay $5 (test mode) to get 5 credits. 1 credit = 1 agent run."}
+            : "Redeem a coupon or pay $5 to get 5 credits. 1 credit = 1 agent run."}
         </p>
       </div>
 
@@ -137,7 +137,8 @@ export function PaywallClient({
               <CreditCard className="h-5 w-5" /> Pay $5 with a card
             </CardTitle>
             <CardDescription>
-              DodoPayments test mode. Grants 5 credits after payment.
+              Secure card payment via DodoPayments. Grants 5 credits after
+              payment.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -147,9 +148,8 @@ export function PaywallClient({
             </Button>
             {payError && <p className="text-sm text-destructive">{payError}</p>}
             <div className="rounded-md bg-muted p-3 text-xs text-muted-foreground">
-              <p className="font-medium">Test card</p>
-              <p>Number: 4242 4242 4242 4242</p>
-              <p>Any future expiry · any CVC · any ZIP</p>
+              You&apos;ll be redirected to DodoPayments&apos; secure checkout to
+              complete your $5 payment.
             </div>
           </CardContent>
         </Card>

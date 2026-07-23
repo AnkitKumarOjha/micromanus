@@ -39,13 +39,18 @@ export const serverEnv = {
     return required("DODO_PAYMENTS_WEBHOOK_SECRET");
   },
   get dodoEnvironment() {
-    return optional("DODO_PAYMENTS_ENVIRONMENT", "test_mode");
+    return optional("DODO_PAYMENTS_ENVIRONMENT", "live_mode");
   },
   get dodoProductId() {
     return required("DODO_PRODUCT_ID_5_CREDITS");
   },
+  // Search keys are optional — the search module falls back to a no-key
+  // DuckDuckGo provider when neither Tavily nor Brave is configured.
+  get tavilyApiKey() {
+    return optional("TAVILY_API_KEY");
+  },
   get braveApiKey() {
-    return required("BRAVE_SEARCH_API_KEY");
+    return optional("BRAVE_SEARCH_API_KEY");
   },
   get encryptionKey() {
     return required("ENCRYPTION_KEY");

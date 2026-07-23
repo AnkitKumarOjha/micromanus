@@ -67,7 +67,7 @@ export default function LoginPage() {
           )}
           <p className="pt-2 text-center text-xs text-muted-foreground">
             After signing up you&apos;ll unlock access with a coupon or a $5
-            test payment.
+            payment.
           </p>
         </CardContent>
       </Card>
