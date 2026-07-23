@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { SignOutButton } from "./SignOutButton";
-import { Coins } from "lucide-react";
+import { CreditsBadge } from "./CreditsBadge";
 
 // Server component: reads credit balance and renders the top navigation.
 export async function TopNav({ active }: { active?: "chat" | "keys" | "stats" }) {
@@ -49,13 +49,7 @@ export async function TopNav({ active }: { active?: "chat" | "keys" | "stats" })
         {link("/stats", "Stats", "stats")}
       </div>
       <div className="flex items-center gap-3">
-        <span
-          className="flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm"
-          title="Credits remaining. 1 credit = 1 agent run."
-        >
-          <Coins className="h-4 w-4" />
-          {credits} {credits === 1 ? "credit" : "credits"}
-        </span>
+        <CreditsBadge initial={credits} />
         <SignOutButton />
       </div>
     </header>

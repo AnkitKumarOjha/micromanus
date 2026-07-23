@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { CREDITS_EVENT } from "@/components/app/CreditsBadge";
 import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/spinner";
 import { Markdown } from "./Markdown";
@@ -41,7 +41,6 @@ interface UIMessage {
 }
 
 export function ChatShell({ initialChatId }: { initialChatId?: string }) {
-  const router = useRouter();
   const [chats, setChats] = useState<ChatListItem[]>([]);
   const [activeId, setActiveId] = useState<string | null>(
     initialChatId ?? null,
@@ -187,7 +186,14 @@ export function ChatShell({ initialChatId }: { initialChatId?: string }) {
       return;
     }
     if (step.type === "credits") {
-      return; // TopNav refreshes on done
+      // Update the credit badge live, without a router.refresh() (which would
+      // remount this shell and reload the thread).
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent(CREDITS_EVENT, { detail: step.balance }),
+        );
+      }
+      return;
     }
     setMessages((prev) => {
       const copy = [...prev];
@@ -307,8 +313,7 @@ export function ChatShell({ initialChatId }: { initialChatId?: string }) {
         fetch(`/api/chats/${id}`, { method: "DELETE" });
       }
     } else {
-      loadChats(); // refresh titles/order
-      router.refresh(); // update credit badge in TopNav
+      loadChats(); // refresh sidebar titles/order (no thread remount)
     }
     setSending(false);
   }
