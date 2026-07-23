@@ -3,27 +3,20 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Spinner } from "@/components/ui/spinner";
 import { PROVIDERS, modelsForProvider, providerLabel } from "@/lib/models";
 import type { Provider } from "@/lib/types";
 import { X } from "lucide-react";
 
-export interface CreatedChat {
-  id: string;
-  title: string;
-  provider: Provider;
-  model_id: string;
-  updated_at: string;
-}
-
 export function NewChatDialog({
   availableProviders,
   onClose,
-  onCreated,
+  onStart,
 }: {
   availableProviders: Provider[];
   onClose: () => void;
-  onCreated: (chat: CreatedChat) => void;
+  // Selects provider + model for a new thread. The chat row is NOT created
+  // here — it's created on the first message send (see ChatShell).
+  onStart: (provider: Provider, modelId: string) => void;
 }) {
   const first = availableProviders[0];
   const [provider, setProvider] = useState<Provider | undefined>(first);
@@ -31,13 +24,12 @@ export function NewChatDialog({
     first ? (modelsForProvider(first)[0]?.modelId ?? "") : "",
   );
   const [customModel, setCustomModel] = useState("");
-  const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isCustom = provider === "custom";
   const models = provider ? modelsForProvider(provider) : [];
 
-  async function create() {
+  function start() {
     if (!provider) return;
     const chosenModel = isCustom ? customModel.trim() : modelId;
     if (!chosenModel) {
@@ -45,24 +37,7 @@ export function NewChatDialog({
       return;
     }
     setError(null);
-    setCreating(true);
-    try {
-      const res = await fetch("/api/chats", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider, modelId: chosenModel }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Failed to create chat");
-      } else {
-        onCreated(data.chat);
-      }
-    } catch {
-      setError("Network error");
-    } finally {
-      setCreating(false);
-    }
+    onStart(provider, chosenModel);
   }
 
   return (
@@ -132,13 +107,14 @@ export function NewChatDialog({
             </div>
 
             <p className="text-xs text-muted-foreground">
-              The provider and model are fixed for this thread.
+              The provider and model are fixed for this thread. The chat is
+              created when you send your first message.
             </p>
 
             {error && <p className="text-sm text-destructive">{error}</p>}
 
-            <Button className="w-full" onClick={create} disabled={creating}>
-              {creating ? <Spinner /> : null} Create chat
+            <Button className="w-full" onClick={start}>
+              Start chat
             </Button>
           </div>
         )}

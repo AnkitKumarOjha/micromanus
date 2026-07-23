@@ -21,7 +21,19 @@ export function StepTrace({
   steps: AgentStep[];
   running?: boolean;
 }) {
-  const [open, setOpen] = useState(true);
+  // Collapsed by default (esp. on reload); the header conveys live progress.
+  const [open, setOpen] = useState(false);
+
+  // The panel only exists if the agent actually did research. A run with zero
+  // tool steps (e.g. a direct reply to "hey") never mounts this panel — even
+  // while running.
+  const hasResearch = steps.some(
+    (s) =>
+      s.type === "tool_call" ||
+      s.type === "tool_result" ||
+      s.type === "artifact",
+  );
+  if (!hasResearch) return null;
 
   const visible = steps.filter(
     (s) =>
@@ -30,10 +42,22 @@ export function StepTrace({
       s.type === "status" ||
       s.type === "artifact",
   );
-
-  if (visible.length === 0 && !running) return null;
-
   const count = visible.filter((s) => s.type === "tool_call").length;
+
+  // While running, show the latest activity in the (collapsed) header so each
+  // search/fetch is visible live without expanding.
+  const activity = visible.filter(
+    (s) =>
+      s.type === "tool_call" ||
+      s.type === "tool_result" ||
+      s.type === "artifact",
+  );
+  const latest = activity[activity.length - 1];
+  let latestLabel = "Researching…";
+  if (latest) {
+    if (latest.type === "artifact") latestLabel = `Generating report: ${latest.title}`;
+    else latestLabel = latest.label;
+  }
 
   return (
     <div className="mb-2 rounded-lg border bg-muted/40 text-sm">
@@ -51,8 +75,10 @@ export function StepTrace({
         ) : (
           <Brain className="h-4 w-4" />
         )}
-        <span className="font-medium">
-          {running ? "Researching…" : `Research steps (${count} tool calls)`}
+        <span className="min-w-0 flex-1 truncate font-medium">
+          {running
+            ? latestLabel
+            : `Research steps (${count} tool call${count === 1 ? "" : "s"})`}
         </span>
       </button>
       {open && (

@@ -8,7 +8,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Markdown } from "./Markdown";
 import { StepTrace } from "./StepTrace";
 import { ArtifactCard } from "./ArtifactCard";
-import { NewChatDialog, type CreatedChat } from "./NewChatDialog";
+import { NewChatDialog } from "./NewChatDialog";
 import { streamAgentRun } from "@/lib/stream";
 import { displayNameFor, providerLabel } from "@/lib/models";
 import type { AgentStep, DbMessage, Provider } from "@/lib/types";
@@ -59,6 +59,12 @@ export function ChatShell({ initialChatId }: { initialChatId?: string }) {
   const [outOfCredits, setOutOfCredits] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [lastCost, setLastCost] = useState<number | null>(null);
+  // A new thread the user has configured but not yet sent a message in. No DB
+  // row exists for it until the first message; it's not shown in the sidebar.
+  const [pending, setPending] = useState<{
+    provider: Provider;
+    model_id: string;
+  } | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -145,18 +151,22 @@ export function ChatShell({ initialChatId }: { initialChatId?: string }) {
 
   function selectChat(id: string) {
     setActiveId(id);
+    setPending(null);
     setSidebarOpen(false);
     window.history.replaceState({}, "", `/chat/${id}`);
     loadThread(id);
   }
 
-  function onCreated(chat: CreatedChat) {
-    setChats((c) => [chat as ChatListItem, ...c]);
+  // Start a NEW thread: only capture provider/model. No DB row and no sidebar
+  // entry yet — both are created on the first message send.
+  function startNewChat(provider: Provider, modelId: string) {
     setShowNewChat(false);
-    setActiveId(chat.id);
-    setActiveMeta({ provider: chat.provider, model_id: chat.model_id });
+    setPending({ provider, model_id: modelId });
+    setActiveId(null);
+    setActiveMeta({ provider, model_id: modelId });
     setMessages([]);
-    window.history.replaceState({}, "", `/chat/${chat.id}`);
+    setLastCost(null);
+    window.history.replaceState({}, "", "/chat");
   }
 
   async function deleteChat(id: string) {
@@ -210,22 +220,92 @@ export function ChatShell({ initialChatId }: { initialChatId?: string }) {
 
   async function send() {
     const text = input.trim();
-    if (!text || !activeId || sending) return;
+    if (!text || sending || (!activeId && !pending)) return;
     setInput("");
     setSending(true);
     setLastCost(null);
+
+    // First message of a new thread → create the chat row now, exactly once.
+    let chatId = activeId;
+    let createdChat: ChatListItem | null = null;
+    if (!chatId && pending) {
+      try {
+        const res = await fetch("/api/chats", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            provider: pending.provider,
+            modelId: pending.model_id,
+            title: text.length > 60 ? text.slice(0, 57) + "…" : text,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setMessages([
+            { role: "user", content: text },
+            {
+              role: "assistant",
+              content: "",
+              error: data.error ?? "Failed to create chat",
+            },
+          ]);
+          setSending(false);
+          return;
+        }
+        createdChat = data.chat as ChatListItem;
+        chatId = createdChat.id;
+        setChats((c) => [createdChat as ChatListItem, ...c]);
+        setActiveId(chatId);
+        setActiveMeta({
+          provider: createdChat.provider,
+          model_id: createdChat.model_id,
+        });
+        setPending(null);
+        window.history.replaceState({}, "", `/chat/${chatId}`);
+      } catch {
+        setMessages([
+          { role: "user", content: text },
+          { role: "assistant", content: "", error: "Network error creating chat" },
+        ]);
+        setSending(false);
+        return;
+      }
+    }
+    if (!chatId) {
+      setSending(false);
+      return;
+    }
+
     setMessages((prev) => [
       ...prev,
       { role: "user", content: text },
       { role: "assistant", content: "", steps: [], artifacts: [], running: true },
     ]);
 
-    const result = await streamAgentRun(activeId, text, handleStep);
+    const result = await streamAgentRun(chatId, text, handleStep);
 
     if (result.outOfCredits) {
-      // Nothing was persisted; drop the optimistic pair and show the paywall.
+      // Refused before anything was persisted; drop the optimistic pair.
       setMessages((prev) => prev.slice(0, prev.length - 2));
       setOutOfCredits(true);
+      // If we just created the chat for this first message, it has no persisted
+      // messages — delete it so no empty orphan row survives.
+      if (createdChat) {
+        const id = createdChat.id;
+        setChats((c) => c.filter((x) => x.id !== id));
+        setActiveId(null);
+        setActiveMeta({
+          provider: createdChat.provider,
+          model_id: createdChat.model_id,
+        });
+        setPending({
+          provider: createdChat.provider,
+          model_id: createdChat.model_id,
+        });
+        setMessages([]);
+        window.history.replaceState({}, "", "/chat");
+        fetch(`/api/chats/${id}`, { method: "DELETE" });
+      }
     } else {
       loadChats(); // refresh titles/order
       router.refresh(); // update credit badge in TopNav
@@ -234,6 +314,7 @@ export function ChatShell({ initialChatId }: { initialChatId?: string }) {
   }
 
   const activeChat = chats.find((c) => c.id === activeId);
+  const hasView = activeId !== null || pending !== null;
 
   return (
     <div className="flex h-[calc(100vh-57px)]">
@@ -315,17 +396,17 @@ export function ChatShell({ initialChatId }: { initialChatId?: string }) {
             <Menu className="h-5 w-5" />
           </Button>
           <span className="truncate text-sm font-medium">
-            {activeChat?.title ?? "MicroManus"}
+            {activeChat?.title ?? (pending ? "New chat" : "MicroManus")}
           </span>
         </div>
 
-        {!activeId ? (
+        {!hasView ? (
           <EmptyMain onNew={() => setShowNewChat(true)} />
         ) : (
           <>
             <div className="hidden items-center justify-between border-b px-4 py-2 md:flex">
               <span className="truncate text-sm font-medium">
-                {activeChat?.title}
+                {activeChat?.title ?? "New chat"}
               </span>
               {activeMeta && (
                 <span className="rounded-full border px-2.5 py-0.5 text-xs text-muted-foreground">
@@ -411,7 +492,7 @@ export function ChatShell({ initialChatId }: { initialChatId?: string }) {
         <NewChatDialog
           availableProviders={availableProviders}
           onClose={() => setShowNewChat(false)}
-          onCreated={onCreated}
+          onStart={startNewChat}
         />
       )}
 
