@@ -1,6 +1,7 @@
 import { getSessionUser } from "@/lib/supabase/server";
 import { createSupabaseServiceClient } from "@/lib/supabase/service";
 import { applyCredit } from "@/lib/credits";
+import { ensureProfile } from "@/lib/profile";
 import { decryptSecret } from "@/lib/crypto";
 import { getAdapter, humanizeProviderError } from "@/lib/providers";
 import type { ChatMessage } from "@/lib/providers/types";
@@ -39,6 +40,7 @@ export async function POST(
   }
 
   const service = createSupabaseServiceClient();
+  await ensureProfile(service, user);
 
   // Verify chat ownership.
   const { data: chat } = await service

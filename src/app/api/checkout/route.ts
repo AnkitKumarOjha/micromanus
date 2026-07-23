@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/supabase/server";
 import { createSupabaseServiceClient } from "@/lib/supabase/service";
+import { ensureProfile } from "@/lib/profile";
 import { createDodoClient } from "@/lib/dodo";
 import { serverEnv, CREDIT_PRICE_CENTS } from "@/lib/env";
 
@@ -36,6 +37,7 @@ export async function POST() {
 
     // Record a pending payment so the webhook can be reconciled/deduped.
     const service = createSupabaseServiceClient();
+    await ensureProfile(service, user);
     await service.from("payments").insert({
       user_id: user.id,
       dodo_checkout_session_id: session.session_id,
