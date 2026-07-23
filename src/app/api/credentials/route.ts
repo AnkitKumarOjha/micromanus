@@ -8,7 +8,13 @@ import type { LlmCredential, Provider } from "@/lib/types";
 
 export const runtime = "nodejs";
 
-const VALID_PROVIDERS: Provider[] = ["anthropic", "openai", "moonshot", "custom"];
+const VALID_PROVIDERS: Provider[] = [
+  "anthropic",
+  "openai",
+  "moonshot",
+  "gemini",
+  "custom",
+];
 
 // GET — list the user's saved keys, masked. Full keys are never returned.
 export async function GET() {

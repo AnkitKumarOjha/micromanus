@@ -2,7 +2,12 @@
 // supabase/migrations/0001_init.sql. Supabase clients here are untyped, so we
 // cast query results to these shapes at call sites.
 
-export type Provider = "anthropic" | "openai" | "moonshot" | "custom";
+export type Provider =
+  | "anthropic"
+  | "openai"
+  | "moonshot"
+  | "gemini"
+  | "custom";
 
 export interface Profile {
   id: string;

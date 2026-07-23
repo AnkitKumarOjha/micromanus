@@ -5,7 +5,13 @@ import type { Provider } from "@/lib/types";
 
 export const runtime = "nodejs";
 
-const VALID_PROVIDERS: Provider[] = ["anthropic", "openai", "moonshot", "custom"];
+const VALID_PROVIDERS: Provider[] = [
+  "anthropic",
+  "openai",
+  "moonshot",
+  "gemini",
+  "custom",
+];
 
 // GET — list the user's non-archived chats, newest activity first.
 export async function GET() {

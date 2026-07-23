@@ -5,7 +5,13 @@ import type { Provider } from "@/lib/types";
 
 export const runtime = "nodejs";
 
-const VALID_PROVIDERS: Provider[] = ["anthropic", "openai", "moonshot", "custom"];
+const VALID_PROVIDERS: Provider[] = [
+  "anthropic",
+  "openai",
+  "moonshot",
+  "gemini",
+  "custom",
+];
 
 // Fire a minimal real request to verify a key without saving it.
 export async function POST(request: Request) {

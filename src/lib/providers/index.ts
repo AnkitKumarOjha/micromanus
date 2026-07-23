@@ -1,7 +1,12 @@
 import type { Provider } from "@/lib/types";
 import type { ProviderAdapter } from "./types";
 import { anthropicAdapter } from "./anthropic";
-import { openaiAdapter, moonshotAdapter, customAdapter } from "./openai";
+import {
+  openaiAdapter,
+  moonshotAdapter,
+  geminiAdapter,
+  customAdapter,
+} from "./openai";
 
 export * from "./types";
 
@@ -13,6 +18,8 @@ export function getAdapter(provider: Provider): ProviderAdapter {
       return openaiAdapter;
     case "moonshot":
       return moonshotAdapter;
+    case "gemini":
+      return geminiAdapter;
     case "custom":
       return customAdapter;
     default:

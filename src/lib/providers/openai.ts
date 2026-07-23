@@ -122,5 +122,9 @@ function makeAdapter(defaultBaseUrl?: string): ProviderAdapter {
 
 export const openaiAdapter = makeAdapter("https://api.openai.com/v1");
 export const moonshotAdapter = makeAdapter("https://api.moonshot.ai/v1");
+// Google Gemini's OpenAI-compatible endpoint (function calling + usage supported).
+export const geminiAdapter = makeAdapter(
+  "https://generativelanguage.googleapis.com/v1beta/openai",
+);
 // Custom has no default base URL — it must always be supplied by the caller.
 export const customAdapter = makeAdapter(undefined);

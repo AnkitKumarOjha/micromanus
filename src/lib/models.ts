@@ -35,6 +35,13 @@ export const PROVIDERS: ProviderConfig[] = [
     keyPlaceholder: "sk-...",
   },
   {
+    id: "gemini",
+    label: "Google Gemini",
+    requiresBaseUrl: false,
+    defaultBaseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+    keyPlaceholder: "AIza...",
+  },
+  {
     id: "custom",
     label: "Custom (OpenAI-compatible)",
     requiresBaseUrl: true,
@@ -65,6 +72,13 @@ export const MODELS: ModelOption[] = [
   { provider: "moonshot", modelId: "kimi-k2.6", displayName: "Kimi K2.6" },
   { provider: "moonshot", modelId: "kimi-k2.5", displayName: "Kimi K2.5" },
   { provider: "moonshot", modelId: "kimi-k3", displayName: "Kimi K3" },
+  // Google Gemini (ids verified against the OpenAI-compat endpoint; the
+  // "-latest" aliases stay pointed at current models so they don't get
+  // restricted for newer keys the way pinned older ids do).
+  { provider: "gemini", modelId: "gemini-pro-latest", displayName: "Gemini Pro (latest)" },
+  { provider: "gemini", modelId: "gemini-2.5-flash", displayName: "Gemini 2.5 Flash" },
+  { provider: "gemini", modelId: "gemini-flash-latest", displayName: "Gemini Flash (latest)" },
+  { provider: "gemini", modelId: "gemini-2.5-flash-lite", displayName: "Gemini 2.5 Flash-Lite" },
 ];
 
 export function modelsForProvider(provider: Provider): ModelOption[] {
